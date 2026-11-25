@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calpineur — plan de surface &amp; calepinage</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+<aside>
+  <div class="brand">
+    <h1>Calpineur</h1>
+    <p>Plan de surface &amp; simulation de pose</p>
+  </div>
+  <div class="scroll">
+
+    <!-- 1. comment on travaille -->
+    <section>
+      <h2>Mode</h2>
+      <div class="grid2">
+        <button data-mode="draw" class="on">✎ Dessiner</button>
+        <button data-mode="edit">⇱ Modifier</button>
+        <button data-mode="pose">▦ Pose</button>
+        <button data-mode="measure">📏 Mesurer</button>
+        <button data-mode="pan" class="span2">✋ Déplacer la vue</button>
+      </div>
+      <p class="hint" id="modeHelp"></p>
+    </section>
+
+    <!-- 2. la pièce -->
+    <section>
+      <h2>Surface</h2>
+      <div class="row">
+        <div class="f">
+          <label>Unité de saisie</label>
+          <select id="unit"><option value="m" selected>mètres</option><option value="cm">centimètres</option></select>
+        </div>
+        <div class="f">
+          <label>Angles aimantés</label>
+          <select id="snapStep">
+            <option value="90">90° seulement</option>
+            <option value="45" selected>45° et 90°</option>
+            <option value="15">tous les 15°</option>
+            <option value="5">tous les 5°</option>
+            <option value="0">aucun</option>
+          </select>
+        </div>
+      </div>
+      <label class="chk"><input type="checkbox" id="snapOn" checked> Aimanter vers ces angles <span class="dim">(Maj = désactiver)</span></label>
+      <label>Force d'attraction</label>
+      <div class="seg row">
+        <button data-tol="4">Légère</button><button data-tol="8" class="on">Normale</button><button data-tol="15">Forte</button>
+      </div>
+      <div class="row">
+        <div class="f"><label>Rectangle — largeur (<span class="uLbl">m</span>)</label><input type="number" id="rw" value="5" step="0.01" inputmode="decimal"></div>
+        <div class="f"><label>hauteur (<span class="uLbl">m</span>)</label><input type="number" id="rh" value="4" step="0.01" inputmode="decimal"></div>
+      </div>
+      <div class="row">
+        <button class="f" id="mkRect">Créer le rectangle</button>
+        <button class="f" id="closeShape">Fermer le contour</button>
+      </div>
+      <div class="row">
+        <button class="f" id="fit">Ajuster la vue</button>
+        <button class="f danger" id="clear">Nouveau plan</button>
+      </div>
+    </section>
+
+    <!-- 3. ce qui perce les murs -->
+    <section>
+      <h2>Ouvertures <button id="addDoor" style="padding:2px 8px;font-size:10px">+ Ajouter</button></h2>
+      <div id="doorList" class="doorlist"></div>
+      <p class="hint">Portes et passages ne sont pas dessinés : leur largeur est déduite du linéaire de plinthes. Plusieurs largeurs possibles, chacune avec sa quantité.</p>
+    </section>
+
+    <!-- 4. le matériau -->
+    <section>
+      <h2>Carreaux</h2>
+      <div class="row">
+        <div class="f"><label>Longueur (cm)</label><input type="number" id="tw" value="60" inputmode="decimal"></div>
+        <div class="f"><label>Largeur (cm)</label><input type="number" id="th" value="60" inputmode="decimal"></div>
+      </div>
+      <div class="row">
+        <div class="f"><label>Joint (mm)</label><input type="number" id="tj" value="3" inputmode="decimal"></div>
+        <div class="f"><label>Motif</label>
+          <select id="pattern">
+            <option value="droit">Droit</option>
+            <option value="demi">Décalé 1/2</option>
+            <option value="tiers">Décalé 1/3</option>
+          </select>
+        </div>
+      </div>
+      <div class="row"><button class="f" id="swap">↔ Pivoter le carreau 90°</button></div>
+    </section>
+
+    <!-- 5. comment il est posé -->
+    <section>
+      <h2>Pose <span class="dim" style="text-transform:none;letter-spacing:0">mode ▦</span></h2>
+      <div class="row">
+        <div class="f"><label>Angle (°)</label><input type="number" id="rot" value="0" step="1" inputmode="decimal"></div>
+        <div class="f"><label>Départ</label>
+          <select id="start"><option value="coin">Coin haut-gauche</option><option value="centre">Centré</option></select>
+        </div>
+      </div>
+      <input type="range" id="rotR" min="0" max="90" step="1" value="0">
+      <div class="seg row" style="margin-top:8px">
+        <button data-rot="0">0°</button><button data-rot="30">30°</button>
+        <button data-rot="45">45°</button><button data-rot="60">60°</button>
+      </div>
+      <div class="row">
+        <div class="f"><label>Décalage X (cm)</label><input type="number" id="offx" value="0" step="0.5" inputmode="decimal"></div>
+        <div class="f"><label>Décalage Y (cm)</label><input type="number" id="offy" value="0" step="0.5" inputmode="decimal"></div>
+      </div>
+      <label>Sensibilité du glissement <b id="sensV" class="mono">100 %</b></label>
+      <input type="range" id="sens" min="10" max="200" step="5" value="100">
+      <p class="hint">Mode ▦ : maintenir et glisser déplace le calepinage, <kbd>Maj</kbd>+glisser ou clic droit le fait tourner. Flèches = 0,5 cm.</p>
+      <div class="row"><button class="f accent" id="optPose">⚙ Chercher la pose la plus économe</button></div>
+      <p class="hint">Balaye tous les décalages possibles et retient celui qui fait acheter le moins de carreaux, à format, motif et angle inchangés.</p>
+      <div class="row">
+        <button class="f" id="resetPose">Réinitialiser</button>
+        <button class="f" id="undoOpt" disabled>↶ Pose précédente</button>
+      </div>
+    </section>
+
+    <!-- 6. comment on débite -->
+    <section>
+      <h2>Coupes &amp; chutes</h2>
+      <div class="row">
+        <div class="f"><label>Chute mini réutilisable (cm)</label><input type="number" id="minUse" value="5" step="0.5" inputmode="decimal"></div>
+        <div class="f"><label>Trait de scie (mm)</label><input type="number" id="kerf" value="3" step="0.5" inputmode="decimal"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="allowRot" checked> Chutes réutilisables dans les deux sens <span class="dim">(carreau non directionnel)</span></label>
+      <label class="chk"><input type="checkbox" id="showTiles" checked> Afficher le calepinage</label>
+      <label class="chk"><input type="checkbox" id="showCuts" checked> Colorer les coupes</label>
+      <label class="chk"><input type="checkbox" id="showNums"> Numéroter les coupes à l'écran</label>
+      <label class="chk"><input type="checkbox" id="showGrid" checked> Afficher la trame</label>
+      <label class="chk"><input type="checkbox" id="showDims" checked> Afficher les cotes</label>
+    </section>
+
+    <!-- 7. le résultat pour le sol -->
+    <section>
+      <h2>Résultats — sol</h2>
+      <div class="stats">
+        <span class="k">Surface</span><span class="v hi" id="sArea">—</span>
+        <span class="k">Périmètre</span><span class="v" id="sPerim">—</span>
+        <span class="k">Carreaux entiers</span><span class="v" id="sFull">—</span>
+        <span class="k">Coupes à réaliser</span><span class="v" id="sCut">—</span>
+        <span class="k">Carreaux ouverts pour les coupes</span><span class="v" id="sSrc">—</span>
+        <span class="k">Chutes réemployées</span><span class="v" id="sReuse">—</span>
+        <span class="k">Total carreaux</span><span class="v hi" id="sTot">—</span>
+        <span class="k">Rendement matière</span><span class="v" id="sYield">—</span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="f"><label>Marge de casse (%)</label><input type="number" id="waste" value="5" step="1" min="0" inputmode="decimal"></div>
+        <div class="f"><label>À acheter</label><input type="text" id="sBuy" value="—" readonly></div>
+      </div>
+    </section>
+
+    <!-- 8. les plinthes -->
+    <section>
+      <h2>Plinthes</h2>
+      <label class="chk"><input type="checkbox" id="plOn"> Calculer les plinthes</label>
+      <div id="plBox">
+        <div class="row">
+          <div class="f"><label>Longueur d'une plinthe (cm)</label><input type="number" id="plLen" value="60" step="1" inputmode="decimal"></div>
+          <div class="f"><label>Hauteur (cm)</label><input type="number" id="plH" value="8" step="0.5" inputmode="decimal"></div>
+        </div>
+        <label class="chk"><input type="checkbox" id="plStock" checked> Vendues toutes faites à cette longueur</label>
+
+        <div id="plSrcBox">
+          <label>Carreau dans lequel les tailler</label>
+          <div class="row">
+            <div class="f"><label>Longueur (cm)</label><input type="number" id="plSrcW" value="120" step="1" inputmode="decimal"></div>
+            <div class="f"><label>Largeur (cm)</label><input type="number" id="plSrcH" value="60" step="1" inputmode="decimal"></div>
+          </div>
+          <div class="row">
+            <button class="f" id="plSrcSameAsFloor">Reprendre le carreau du sol</button>
+          </div>
+          <label>Mode de débit</label>
+          <div class="seg row">
+            <button data-plmode="mini" class="on">Mini — chant d'usine</button>
+            <button data-plmode="max">Max — tout exploiter</button>
+          </div>
+          <p class="hint" id="plModeNote"></p>
+        </div>
+
+        <div class="row">
+          <div class="f"><label>Marge de casse plinthes (%)</label><input type="number" id="plWaste" value="5" step="1" min="0" inputmode="decimal"></div>
+        </div>
+
+        <div class="stats">
+          <span class="k">Linéaire brut</span><span class="v" id="pLin">—</span>
+          <span class="k">Ouvertures déduites</span><span class="v" id="pDoor">—</span>
+          <span class="k">Linéaire net</span><span class="v hi" id="pNet">—</span>
+          <span class="k">Barres entières</span><span class="v" id="pFull">—</span>
+          <span class="k">Pièces coupées</span><span class="v" id="pCut">—</span>
+          <span class="k">Chutes réemployées</span><span class="v" id="pReuse">—</span>
+          <span class="k">Plinthes nécessaires</span><span class="v hi" id="pBuy">—</span>
+          <span class="k" id="pPerK">Plinthes par carreau</span><span class="v" id="pPer">—</span>
+          <span class="k" id="pGroundK">Dont chants à refaire</span><span class="v" id="pGround">—</span>
+          <span class="k" id="pTilesK">Carreaux pour les plinthes</span><span class="v hi" id="pTiles">—</span>
+        </div>
+        <p class="hint" id="plNote"></p>
+      </div>
+    </section>
+
+    <!-- 9. relevés libres -->
+    <section>
+      <h2>Mesures <button id="clrMeas" style="padding:2px 7px;font-size:10px">Effacer</button></h2>
+      <div id="measList" class="measlist"><span class="dim">Aucune mesure. Passez en mode 📏.</span></div>
+    </section>
+
+    <!-- 10. sortir le travail -->
+    <section>
+      <h2>Export</h2>
+      <div class="row">
+        <button class="f accent" id="exPdf">📄 Dossier de pose A4</button>
+      </div>
+      <div class="row">
+        <button class="f" id="exPng">Image PNG</button>
+        <button class="f" id="exSvg">Plan SVG</button>
+      </div>
+      <div class="row">
+        <button class="f" id="exJson">Sauvegarder .json</button>
+        <button class="f" id="imJson">Ouvrir .json</button>
+      </div>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+      <p class="hint" id="memInfo"></p>
+    </section>
+
+    <section style="border-bottom:none">
+      <details>
+        <summary>Raccourcis</summary>
+        <p class="hint">
+          <kbd>0-9</kbd> longueur du mur en cours &middot;
+          <kbd>Tab</kbd> passer à l'angle &middot;
+          <kbd>Entrée</kbd> valider &middot;
+          <kbd>Retour</kbd> effacer un chiffre / le dernier point &middot;
+          <kbd>Échap</kbd> annuler &middot;
+          <kbd>C</kbd> fermer le contour &middot;
+          <kbd>Maj</kbd> désactiver l'aimant &middot;
+          <kbd>Espace</kbd>+glisser déplacer la vue &middot;
+          <kbd>Molette</kbd> zoom &middot;
+          <kbd>[</kbd> <kbd>]</kbd> rotation de pose ±5° &middot;
+          <kbd>1</kbd>…<kbd>5</kbd> changer de mode (hors saisie).
+        </p>
+        <p class="hint">Mode Modifier : glisser un sommet, cliquer une cote pour saisir la longueur exacte, double-clic sur un mur pour ajouter un point, clic droit sur un sommet pour le supprimer.</p>
+      </details>
+    </section>
+
+  </div>
+</aside>
+
+<main>
+  <div id="bar">
+    <button data-mode="draw" class="on">✎</button>
+    <button data-mode="edit">⇱</button>
+    <button data-mode="pose">▦</button>
+    <button data-mode="measure">📏</button>
+    <div class="sep"></div>
+    <button id="bUndo">↶ Annuler</button>
+    <button id="bClose">⬡ Fermer</button>
+    <div class="sep"></div>
+    <button id="bZoomOut">−</button><button id="bZoomIn">+</button><button id="bFit">Ajuster</button>
+    <div class="grow"></div>
+    <span id="modeLabel" class="dim"></span>
+  </div>
+  <div id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div class="cell" id="hudA"><i>—</i><span>0</span></div>
+      <div class="cell" id="hudB"><i>—</i><span>0</span></div>
+    </div>
+    <div id="inline"><span id="inlineLabel"></span><input id="inlineInput" inputmode="decimal"><span id="inlineUnit"></span></div>
+    <div id="toast"></div>
+    <div id="status">
+      <span>Position <b id="stPos">—</b></span>
+      <span>Échelle <b id="stZoom">—</b></span>
+      <span id="stMsg"></span>
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="printRoot"></div>
+
+<script src="js/01-state.js"></script>
+<script src="js/02-geom.js"></script>
+<script src="js/03-tiles.js"></script>
+<script src="js/04-optim.js"></script>
+<script src="js/04b-plinthes.js"></script>
+<script src="js/05-render.js"></script>
+<script src="js/06-interact.js"></script>
+<script src="js/07-ui.js"></script>
+<script src="js/08-storage.js"></script>
+<script src="js/09-export.js"></script>
+<script src="js/10-main.js"></script>
+</body>
+</html>
